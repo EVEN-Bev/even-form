@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .test-container { margin-bottom: 20px; padding: 10px; border: 1px solid #ccc; }
+    img { border: 1px dashed red; max-width: 200px; max-height: 200px; }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Image Loading Test</h1>
+  
+  <div class="test-container">
+    <h2>Test 1: Direct Image Tag</h2>
+    <img src="/even-logo.png" alt="EVEN Logo" onerror="this.parentNode.innerHTML += '<p class=\'error\'>❌ Failed to load image</p>'">
+    <img src="/even-logo.png" alt="EVEN Logo" onload="this.parentNode.innerHTML += '<p class=\'success\'>✅ Image loaded successfully</p>'">
+  </div>
+  
+  <div class="test-container">
+    <h2>Test 2: Root Public Directory</h2>
+    <img src="/favicon.png" alt="Favicon" onerror="this.parentNode.innerHTML += '<p class=\'error\'>❌ Failed to load image</p>'">
+    <img src="/favicon.png" alt="Favicon" onload="this.parentNode.innerHTML += '<p class=\'success\'>✅ Image loaded successfully</p>'">
+  </div>
+  
+  <div class="test-container">
+    <h2>Test 3: Team Images</h2>
+    <img src="/images/matt-vandelec.png" alt="Matt" onerror="this.parentNode.innerHTML += '<p class=\'error\'>❌ Failed to load image</p>'">
+    <img src="/images/james-ganino.png" alt="James" onerror="this.parentNode.innerHTML += '<p class=\'error\'>❌ Failed to load image</p>'">
+    <img src="/images/alana-wigdahl.png" alt="Alana" onerror="this.parentNode.innerHTML += '<p class=\'error\'>❌ Failed to load image</p>'">
+  </div>
+  
+  <div class="test-container">
+    <h2>Test 4: Absolute URLs</h2>
+    <div id="absoluteUrlTest">
+      <script>
+        // Get the current domain
+        const domain = window.location.origin;
+        document.write(`<p>Testing with domain: ${domain}</p>`);
+        document.write(`<img src="${domain}/even-logo.png" alt="EVEN Logo" onerror="document.getElementById('absoluteUrlTest').innerHTML += '<p class=\\'error\\'>❌ Failed to load image with absolute URL</p>'">`);
+      </script>
+    </div>
+  </div>
+
+  <div class="test-container">
+    <h2>Test 5: File System Check</h2>
+    <div id="fileSystemCheck">
+      <script>
+        // This won't work in browsers due to security restrictions, but it's worth a try
+        try {
+          fetch('/even-logo.png')
+            .then(response => {
+              if (response.ok) {
+                document.getElementById('fileSystemCheck').innerHTML += '<p class="success">✅ File exists on server</p>';
+              } else {
+                document.getElementById('fileSystemCheck').innerHTML += '<p class="error">❌ File not found on server (404)</p>';
+              }
+            })
+            .catch(error => {
+              document.getElementById('fileSystemCheck').innerHTML += `<p class="error">❌ Error checking file: ${error.message}</p>`;
+            });
+        } catch (e) {
+          document.getElementById('fileSystemCheck').innerHTML += `<p class="error">❌ Exception: ${e.message}</p>`;
+        }
+      </script>
+    </div>
+  </div>
+</body>
+</html>
