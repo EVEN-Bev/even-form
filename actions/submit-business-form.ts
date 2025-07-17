@@ -6,6 +6,7 @@ import { getServerClient } from '@/lib/supabase-server'
 import { getAdminClient } from '@/lib/supabase-admin'
 import { sendBusinessRecordEmail } from '@/lib/email-utils'
 import type { BusinessFormData } from '@/types/business-types'
+import { getEnvironmentData } from 'node:worker_threads'
 
 // Name of the storage bucket
 const STORAGE_BUCKET = 'business-documents'
@@ -288,9 +289,31 @@ export async function submitBusinessForm(formData: BusinessFormData) {
     if (!fetchError && fullRecord) {
       try {
         // Send notification emails
-        // Send email to both Chris and Laura
-        await sendBusinessRecordEmail(fullRecord, 'chris@humancode.io')
-        await sendBusinessRecordEmail(fullRecord, "laura.bethea@evenbev.com")
+        // Send email to both Sumner and Laura
+
+        switch (process.env.NODE_ENV) {
+          case 'development':
+            await sendBusinessRecordEmail(
+              fullRecord,
+              'sumner.erhard@evenbev.com',
+              'sumner.erhard@evenbev.com'
+            )
+            break
+          case 'test':
+            await sendBusinessRecordEmail(
+              fullRecord,
+              'sumner.erhard@evenbev.com',
+              'sumner.erhard@evenbev.com'
+            )
+            break
+          case 'production':
+            await sendBusinessRecordEmail(fullRecord, 'laura.bethea@evenbev.com')
+            await sendBusinessRecordEmail(fullRecord, 'sumner.erhard@evenbev.com')
+            break
+          default:
+            break
+        }
+
         console.log('Notification emails sent successfully')
       } catch (emailError) {
         console.error('Error sending notification emails:', emailError)
