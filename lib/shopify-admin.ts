@@ -1,7 +1,7 @@
 import { createAdminApiClient } from '@shopify/admin-api-client'
 export const getShopify = () => {
-  const hostName = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN
-  const accessToken = process.env.NEXT_PUBLIC_SHOPIFY_ACCESS_TOKEN
+  const hostName = process.env.SHOPIFY_STORE_DOMAIN
+  const accessToken = process.env.SHOPIFY_ACCESS_TOKEN
 
   if (!hostName) {
     throw new Error('NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN environment variable is not set')
