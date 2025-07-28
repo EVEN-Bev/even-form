@@ -6,7 +6,7 @@ import { getServerClient } from '@/lib/supabase-server'
 import { getAdminClient } from '@/lib/supabase-admin'
 import { sendBusinessRecordEmail } from '@/lib/email-utils'
 import type { BusinessFormData } from '@/types/business-types'
-import { getEnvironmentData } from 'node:worker_threads'
+import { shopifyCreateCustomer } from '@/actions/shopify-create-customer'
 
 // Name of the storage bucket
 const STORAGE_BUCKET = 'business-documents'
@@ -107,6 +107,98 @@ export async function submitBusinessForm(formData: BusinessFormData) {
     // Initialize admin client for storage operations
     const adminSupabase = getAdminClient()
 
+    const { data: customerData, errors: createCustomerErrors } = await shopifyCreateCustomer(
+      true,
+      formData.contactEmail,
+      formData.contactPhone,
+      formData.contactName.split(' ')[0] || '',
+      formData.contactName.split(' ').slice(1).join(' ') || '',
+      formData._additionalData?.businessCategory || '',
+      formData.businessAddress,
+      formData.businessCity,
+      formData.businessState,
+      formData.businessPhone,
+      formData.businessZip,
+      formData.businessName
+    )
+
+    if (createCustomerErrors) {
+      console.error(
+        `Error inserting customer record for ${formData.contactEmail}:`,
+        createCustomerErrors
+      )
+      return { success: false, error: createCustomerErrors.message }
+    }
+
+    if (customerData.customerCreate.userErrors[0]?.message) {
+      console.error(
+        `Error inserting customer record for ${formData.contactEmail}:`,
+        customerData.customerCreate.userErrors[0].message
+      )
+      return {
+        success: false,
+        error:
+          customerData.customerCreate.userErrors[0].message +
+          ` for the user '${formData.contactEmail}'`,
+      }
+    }
+
+    if (
+      formData._additionalData?.additionalUsers &&
+      formData._additionalData.additionalUsers.length > 0
+    ) {
+      const submissionPromise = formData._additionalData.additionalUsers.map(
+        async (user, index) => {
+          const { data: customerData, errors: createAdditionalCustomerErrors } =
+            await shopifyCreateCustomer(
+              false, // Assuming 'false' for additional users based on your snippet
+              user.email,
+              user.phone,
+              user.firstName,
+              user.lastName,
+              formData._additionalData?.businessCategory || '',
+              formData.businessAddress,
+              formData.businessCity,
+              formData.businessState,
+              formData.businessPhone,
+              formData.businessZip,
+              formData.businessName
+            )
+          if (createAdditionalCustomerErrors) {
+            console.error(
+              `Error inserting customer record for ${formData.contactEmail}:`,
+              createCustomerErrors
+            )
+            return { success: false, error: createAdditionalCustomerErrors.message }
+          }
+
+          if (customerData.customerCreate.userErrors[0]?.message) {
+            console.error(
+              `Error inserting customer record for ${formData.contactEmail}:`,
+              customerData.customerCreate.userErrors[0].message
+            )
+            return {
+              success: false,
+              error:
+                customerData.customerCreate.userErrors[0].message +
+                ` for the user '${formData.contactEmail}'`,
+            }
+          }
+
+          return { success: true, error: null }
+        }
+      )
+
+      const results = await Promise.all(submissionPromise)
+      const failedResults = results.filter(result => !result.success)
+
+      if (failedResults.length > 0) {
+        console.error('Some customers failed to create:', failedResults)
+        const errorMessage = failedResults.map(result => result.error).join('\n')
+        return { success: false, error: errorMessage }
+      }
+    }
+
     // 1. Insert the business record first to get the ID
     const { data: businessRecord, error: businessError } = await supabase
       .from('business_records')
@@ -168,7 +260,7 @@ export async function submitBusinessForm(formData: BusinessFormData) {
       console.log('Main account manager inserted successfully')
     }
 
-    // 3. Insert additional account managers if any
+    // 3. Insert additional account managers to supabase if any
     if (
       formData._additionalData?.additionalUsers &&
       formData._additionalData.additionalUsers.length > 0

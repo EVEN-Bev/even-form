@@ -724,14 +724,6 @@ export default function BusinessRecordForm() {
     }, 100)
   }, [step])
 
-  let whatENV
-  const env = process.env.NODE_ENV
-  if (env === 'development') {
-    whatENV = 'development'
-  } else if (env === 'production') {
-    whatENV = 'production'
-  }
-
   return (
     <>
       <Card className="w-full max-w-3xl mx-auto border-border bg-[#1d1e1e] text-card-foreground shadow-sm">
@@ -747,6 +739,7 @@ export default function BusinessRecordForm() {
             <Image
               src="/even-logo.png"
               alt="EVEN Logo"
+              sizes="40px"
               fill
               style={{ objectFit: 'contain' }}
               priority
