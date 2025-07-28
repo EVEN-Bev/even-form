@@ -230,7 +230,9 @@ const formSchema = z.object({
     .optional(),
 
   // Step 4: Tax and Legal Information
-  ein: z.string().min(9, { message: 'Please enter a valid EIN' }),
+
+  // TODO: not validating EIN right now
+  // ein: z.string().min(9, { message: 'Please enter a valid EIN' }),
 
   // Step 5: Account Information
   mainContactFirstName: z.string().min(2, { message: 'First name is required' }),
@@ -437,10 +439,13 @@ export default function BusinessRecordForm() {
           whySellEven.length >= 10
       }
     } else if (step === 4) {
-      const ein = form.getValues('ein')
-      const statesValid = validateStates(false)
+      // TODO: testing not having the EIN and List of state that they do business in validate
 
-      isValid = ein.length >= 9 && statesValid
+      // const ein = form.getValues('ein')
+      // const statesValid = validateStates(false)
+
+      // isValid = ein.length >= 9 && statesValid
+      isValid = true
     } else if (step === 5) {
       // Validate account contact information
       const mainFirstName = form.getValues('mainContactFirstName')
@@ -535,6 +540,7 @@ export default function BusinessRecordForm() {
         businessPhone: values.businessPhone,
         businessEmail: values.mainContactEmail,
         businessWebsite: values.websiteUrl || '',
+        // TODO: fix the EIN number
         businessEIN: values.ein,
 
         // Account manager information
@@ -666,11 +672,14 @@ export default function BusinessRecordForm() {
     const isValid = await form.trigger(fieldsToValidate)
 
     // Additional validation for states in step 4
-    if (step === 4 && isValid) {
-      if (!validateStates(true)) {
-        return
-      }
-    }
+
+    //TODO: removed state validation
+
+    // if (step === 4 && isValid) {
+    //   if (!validateStates(true)) {
+    //     return
+    //   }
+    // }
 
     if (isValid) {
       if (step === 6) {
@@ -730,6 +739,7 @@ export default function BusinessRecordForm() {
             <Image
               src="/even-logo.png"
               alt="EVEN Logo"
+              sizes="40px"
               fill
               style={{ objectFit: 'contain' }}
               priority
@@ -1203,9 +1213,10 @@ export default function BusinessRecordForm() {
                       name="ein"
                       render={({ field }) => (
                         <FormItem>
-                          <RequiredFormLabel>
-                            EIN (Employer Identification Number)
-                          </RequiredFormLabel>
+                          <FormLabel>EIN (Employer Identification Number)</FormLabel>
+                          <p className="text-gray-400 text-xs">
+                            If you don't have this information then skip for now
+                          </p>
                           <FormControl>
                             <Input
                               type="text"
@@ -1232,7 +1243,7 @@ export default function BusinessRecordForm() {
                     />
 
                     <div className="space-y-4">
-                      <RequiredFormLabel>List States You Do Business In</RequiredFormLabel>
+                      <FormLabel>List States You Do Business In</FormLabel>
                       <StatesSelector
                         selectedStates={selectedStates}
                         setSelectedStates={wrappedSetSelectedStates}
