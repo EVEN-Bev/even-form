@@ -107,6 +107,7 @@ export async function submitBusinessForm(formData: BusinessFormData) {
     // Initialize admin client for storage operations
     const adminSupabase = getAdminClient()
 
+    // Create primary account manager in Shopify
     const { data: customerData, errors: createCustomerErrors } = await shopifyCreateCustomer(
       true,
       formData.contactEmail,
@@ -143,6 +144,9 @@ export async function submitBusinessForm(formData: BusinessFormData) {
       }
     }
 
+    let additionalShopifyCustomerAccounts = null
+
+    // Create additional managers in Shopify
     if (
       formData._additionalData?.additionalUsers &&
       formData._additionalData.additionalUsers.length > 0
@@ -169,7 +173,7 @@ export async function submitBusinessForm(formData: BusinessFormData) {
               `Error inserting customer record for ${formData.contactEmail}:`,
               createCustomerErrors
             )
-            return { success: false, error: createAdditionalCustomerErrors.message }
+            return { success: false, error: createAdditionalCustomerErrors.message, data: null }
           }
 
           if (customerData.customerCreate.userErrors[0]?.message) {
@@ -182,19 +186,24 @@ export async function submitBusinessForm(formData: BusinessFormData) {
               error:
                 customerData.customerCreate.userErrors[0].message +
                 ` for the user '${formData.contactEmail}'`,
+              data: null,
             }
           }
 
-          return { success: true, error: null }
+          return { success: true, error: null, data: customerData }
         }
       )
 
-      const results = await Promise.all(submissionPromise)
-      const failedResults = results.filter(result => !result.success)
+      additionalShopifyCustomerAccounts = await Promise.all(submissionPromise)
+      const failedResults = additionalShopifyCustomerAccounts.filter(
+        additionalShopifyCustomerAccounts => !additionalShopifyCustomerAccounts.success
+      )
 
       if (failedResults.length > 0) {
         console.error('Some customers failed to create:', failedResults)
-        const errorMessage = failedResults.map(result => result.error).join('\n')
+        const errorMessage = failedResults
+          .map(additionalShopifyCustomerAccounts => additionalShopifyCustomerAccounts.error)
+          .join('\n')
         return { success: false, error: errorMessage }
       }
     }
@@ -223,7 +232,7 @@ export async function submitBusinessForm(formData: BusinessFormData) {
           outlet_types: formData._additionalData?.outletTypes || null,
           other_outlet_description: null,
           why_sell_even: formData.businessDescription || null,
-          ein: formData.businessEIN,
+          ein: formData.businessEIN || '',
         },
       ])
       .select()
@@ -250,6 +259,7 @@ export async function submitBusinessForm(formData: BusinessFormData) {
         email: formData.contactEmail,
         phone: formData.contactPhone,
         is_main: true,
+        shopify_customer_id: customerData.customerCreate.customer.id.split('/').pop(),
       },
     ])
 
@@ -265,13 +275,18 @@ export async function submitBusinessForm(formData: BusinessFormData) {
       formData._additionalData?.additionalUsers &&
       formData._additionalData.additionalUsers.length > 0
     ) {
-      const additionalManagers = formData._additionalData.additionalUsers.map(user => ({
+      const additionalManagers = formData._additionalData.additionalUsers.map((user, index) => ({
         business_id: businessId,
         first_name: user.firstName,
         last_name: user.lastName,
         email: user.email,
         phone: user.phone,
         is_main: false,
+        shopify_customer_id: additionalShopifyCustomerAccounts
+          ? additionalShopifyCustomerAccounts[index].data.customerCreate.customer.id
+              .split('/')
+              .pop()
+          : null,
       }))
 
       const { error: additionalManagersError } = await supabase

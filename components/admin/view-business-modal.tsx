@@ -11,6 +11,8 @@ interface ViewBusinessModalProps {
 }
 
 export function ViewBusinessModal({ record, onClose }: ViewBusinessModalProps) {
+  const mainManager = record.account_managers?.find(manager => manager.is_main)
+
   // Helper function to format array values
   const formatArrayValue = (value: string[] | null): string => {
     if (!value || value.length === 0) return 'None'
@@ -194,6 +196,24 @@ export function ViewBusinessModal({ record, onClose }: ViewBusinessModalProps) {
                     )}
                   </p>
                 </div>
+                <div>
+                  <h5 className="text-sm font-medium text-muted-foreground mb-1">
+                    Shopify Customer ID
+                  </h5>
+                  <p className="text-base">
+                    {mainManager.shopify_customer_id ? (
+                      <a
+                        target="_blank"
+                        href={`${process.env.NEXT_PUBLIC_SHOPIFY_ADMIN_DOMAIN}/customers/${mainManager.shopify_customer_id}`}
+                        className="text-[#9D783C] hover:underline"
+                      >
+                        View Customer Record
+                      </a>
+                    ) : (
+                      'Not specified'
+                    )}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -244,6 +264,24 @@ export function ViewBusinessModal({ record, onClose }: ViewBusinessModalProps) {
                                   className="text-[#9D783C] hover:underline"
                                 >
                                   {manager.phone}
+                                </a>
+                              ) : (
+                                'Not specified'
+                              )}
+                            </p>
+                          </div>
+                          <div>
+                            <h5 className="text-sm font-medium text-muted-foreground mb-1">
+                              Shopify Customer ID
+                            </h5>
+                            <p className="text-base">
+                              {manager.shopify_customer_id ? (
+                                <a
+                                  target="_blank"
+                                  href={`${process.env.NEXT_PUBLIC_SHOPIFY_ADMIN_DOMAIN}/customers/${manager.shopify_customer_id}`}
+                                  className="text-[#9D783C] hover:underline"
+                                >
+                                  View Customer Record
                                 </a>
                               ) : (
                                 'Not specified'

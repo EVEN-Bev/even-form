@@ -68,6 +68,7 @@ export interface BusinessRecord {
     is_main: boolean
     created_at: string
     updated_at: string
+    shopify_customer_id: string
   }> | null
 }
 

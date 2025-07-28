@@ -1,40 +1,44 @@
-import type { BusinessRecord, BusinessState } from "@/types/business-types"
+import type { BusinessRecord, BusinessState } from '@/types/business-types'
 import * as postmark from 'postmark'
-import { formatDate } from "@/lib/utils"
+import { formatDate } from '@/lib/utils'
 
 // Create a client using the API key
-const client = new postmark.ServerClient(process.env.POSTMARK_API_KEY || "");
+const client = new postmark.ServerClient(process.env.POSTMARK_API_KEY || '')
 
 // Helper functions from view-business-modal.tsx
 const formatArrayValue = (value: string[] | null): string => {
-  if (!value || value.length === 0) return "None"
-  return value.join(", ")
+  if (!value || value.length === 0) return 'None'
+  return value.join(', ')
 }
 
 const getCategoryLabel = (category: string): string => {
-  return category === "direct-retail" ? "Direct / Retail" : "Wholesale / Distributor"
+  return category === 'direct-retail' ? 'Direct / Retail' : 'Wholesale / Distributor'
 }
 
-const getSubcategoryLabel = (subcategory: string, category: string, otherSubcategory: string | null): string => {
-  if (subcategory === "other" && otherSubcategory) {
+const getSubcategoryLabel = (
+  subcategory: string,
+  category: string,
+  otherSubcategory: string | null
+): string => {
+  if (subcategory === 'other' && otherSubcategory) {
     return otherSubcategory
   }
 
-  if (category === "direct-retail") {
+  if (category === 'direct-retail') {
     const subcategories: Record<string, string> = {
-      "bar-nightclub": "Bar / Nightclub",
-      restaurant: "Restaurant",
-      "liquor-store": "Liquor Store",
-      "grocery-store": "Grocery Store",
-      "event-coordinator": "Event Coordinator",
-      "golf-course": "Golf Course",
-      catering: "Catering",
+      'bar-nightclub': 'Bar / Nightclub',
+      restaurant: 'Restaurant',
+      'liquor-store': 'Liquor Store',
+      'grocery-store': 'Grocery Store',
+      'event-coordinator': 'Event Coordinator',
+      'golf-course': 'Golf Course',
+      catering: 'Catering',
     }
     return subcategories[subcategory] || subcategory
   } else {
     const subcategories: Record<string, string> = {
-      beverage: "Beverage Distributor",
-      foodservice: "Foodservice Distributor",
+      beverage: 'Beverage Distributor',
+      foodservice: 'Foodservice Distributor',
     }
     return subcategories[subcategory] || subcategory
   }
@@ -42,9 +46,9 @@ const getSubcategoryLabel = (subcategory: string, category: string, otherSubcate
 
 // Generate HTML for email that looks like the modal
 export function generateBusinessRecordEmail(record: BusinessRecord): string {
-  const mainManager = record.account_managers?.find(manager => manager.is_main);
-  const additionalManagers = record.account_managers?.filter(manager => !manager.is_main) || [];
-  
+  const mainManager = record.account_managers?.find(manager => manager.is_main)
+  const additionalManagers = record.account_managers?.filter(manager => !manager.is_main) || []
+
   // Basic CSS for email formatting with fixed-width fonts
   const styles = `
     body { font-family: 'Courier New', Courier, monospace; color: #333; line-height: 1.5; }
@@ -62,8 +66,8 @@ export function generateBusinessRecordEmail(record: BusinessRecord): string {
     table { width: 100%; border-collapse: collapse; }
     table td { font-family: 'Courier New', Courier, monospace; padding: 8px; }
     .link { font-family: 'Courier New', Courier, monospace; color: #9D783C; }
-  `;
-  
+  `
+
   // HTML template
   return `
     <!DOCTYPE html>
@@ -96,9 +100,11 @@ export function generateBusinessRecordEmail(record: BusinessRecord): string {
           <div class="info-row">
             <div class="label">Website URL</div>
             <div class="value">
-              ${record.website_url ? 
-                `<a href="${record.website_url}" class="link">${record.website_url}</a>` : 
-                'Not provided'}
+              ${
+                record.website_url
+                  ? `<a href="${record.website_url}" class="link">${record.website_url}</a>`
+                  : 'Not provided'
+              }
             </div>
           </div>
           <div class="info-row">
@@ -116,9 +122,11 @@ export function generateBusinessRecordEmail(record: BusinessRecord): string {
           </div>
           <div class="info-row">
             <div class="label">
-              ${record.business_category === "direct-retail" 
-                ? "Direct / Retail Type" 
-                : "Wholesale / Distributor Type"}
+              ${
+                record.business_category === 'direct-retail'
+                  ? 'Direct / Retail Type'
+                  : 'Wholesale / Distributor Type'
+              }
             </div>
             <div class="value">${getSubcategoryLabel(record.subcategory, record.business_category, record.other_subcategory)}</div>
           </div>
@@ -128,7 +136,7 @@ export function generateBusinessRecordEmail(record: BusinessRecord): string {
           </div>
           <div class="info-row">
             <div class="label">Number of Locations</div>
-            <div class="value">${record.location_count || "Not specified"}</div>
+            <div class="value">${record.location_count || 'Not specified'}</div>
           </div>
         </div>
         
@@ -151,26 +159,45 @@ export function generateBusinessRecordEmail(record: BusinessRecord): string {
             <tr>
               <td class="label">Email</td>
               <td class="value">
-                ${mainManager.email ? 
-                  `<a href="mailto:${mainManager.email}" class="link">${mainManager.email}</a>` : 
-                  'Not specified'}
+                ${
+                  mainManager.email
+                    ? `<a href="mailto:${mainManager.email}" class="link">${mainManager.email}</a>`
+                    : 'Not specified'
+                }
               </td>
             </tr>
             <tr>
               <td class="label">Phone</td>
               <td class="value">
-                ${mainManager.phone ? 
-                  `<a href="tel:${mainManager.phone}" class="link">${mainManager.phone}</a>` : 
-                  'Not specified'}
+                ${
+                  mainManager.phone
+                    ? `<a href="tel:${mainManager.phone}" class="link">${mainManager.phone}</a>`
+                    : 'Not specified'
+                }
+              </td>
+            </tr>
+            
+            <tr>
+              <td class="label">Shopify Customer Account</td>
+              <td class="value">
+                ${
+                  mainManager.shopify_customer_id
+                    ? `<a href="${process.env.NEXT_PUBLIC_SHOPIFY_ADMIN_DOMAIN}/customers/${mainManager.shopify_customer_id}" class="link">View Customer Record</a>`
+                    : 'Not specified'
+                }
               </td>
             </tr>
           </table>
         </div>
         
-        ${additionalManagers.length > 0 ? `
+        ${
+          additionalManagers.length > 0
+            ? `
         <!-- Additional Contacts -->
         <h3>Additional Contacts</h3>
-        ${additionalManagers.map(manager => `
+        ${additionalManagers
+          .map(
+            manager => `
           <div class="card">
             <table>
               <tr>
@@ -180,54 +207,89 @@ export function generateBusinessRecordEmail(record: BusinessRecord): string {
               <tr>
                 <td class="label">Email</td>
                 <td class="value">
-                  ${manager.email ? 
-                    `<a href="mailto:${manager.email}" class="link">${manager.email}</a>` : 
-                    'Not specified'}
+                  ${
+                    manager.email
+                      ? `<a href="mailto:${manager.email}" class="link">${manager.email}</a>`
+                      : 'Not specified'
+                  }
                 </td>
               </tr>
               <tr>
                 <td class="label">Phone</td>
                 <td class="value">
-                  ${manager.phone ? 
-                    `<a href="tel:${manager.phone}" class="link">${manager.phone}</a>` : 
-                    'Not specified'}
+                  ${
+                    manager.phone
+                      ? `<a href="tel:${manager.phone}" class="link">${manager.phone}</a>`
+                      : 'Not specified'
+                  }
                 </td>
               </tr>
+              
+              <tr>
+              <td class="label">Shopify Customer Account</td>
+              <td class="value">
+                ${
+                  manager.shopify_customer_id
+                    ? `<a href="${process.env.NEXT_PUBLIC_SHOPIFY_ADMIN_DOMAIN}/customers/${manager.shopify_customer_id}" class="link">View Customer Record</a>`
+                    : 'Not specified'
+                }
+              </td>
+            </tr>
             </table>
           </div>
-        `).join('')}
-        ` : ''}
+        `
+          )
+          .join('')}
+        `
+            : ''
+        }
         
         <!-- Additional Details -->
         <h2>Additional Details</h2>
         <div class="info-group">
-          ${record.business_category === "wholesale-distributor" ? `
+          ${
+            record.business_category === 'wholesale-distributor'
+              ? `
             <div class="info-row">
               <div class="label">Outlet Types</div>
               <div class="value">${formatArrayValue(record.outlet_types)}</div>
             </div>
-            ${record.outlet_types?.includes("other") && record.other_outlet_description ? `
+            ${
+              record.outlet_types?.includes('other') && record.other_outlet_description
+                ? `
               <div class="info-row">
                 <div class="label">Other Outlet Description</div>
                 <div class="value">${record.other_outlet_description}</div>
               </div>
-            ` : ''}
-          ` : ''}
+            `
+                : ''
+            }
+          `
+              : ''
+          }
           
-          ${record.business_category === "direct-retail" && record.why_sell_even ? `
+          ${
+            record.business_category === 'direct-retail' && record.why_sell_even
+              ? `
             <div class="info-row">
               <div class="label">Why Sell EVEN</div>
               <div class="value">${record.why_sell_even.replace(/\\n/g, '<br>')}</div>
             </div>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
         
         <!-- States -->
         <h2>States</h2>
         
-        ${record.states && record.states.length > 0 ? `
+        ${
+          record.states && record.states.length > 0
+            ? `
           <div class="info-group">
-            ${record.states.map(state => `
+            ${record.states
+              .map(
+                state => `
               <div class="card">
                 <div class="card-header">
                   <h3>${state.state_name}</h3>
@@ -241,20 +303,26 @@ export function generateBusinessRecordEmail(record: BusinessRecord): string {
                   <tr>
                     <td class="label">Documentation</td>
                     <td class="value">
-                      ${state.document_url ? 
-                        `<a href="https://qycfyruqxhypaaehyuvv.supabase.co/storage/v1/object/public/business-documents/${state.document_url}" class="link">View Document</a>` : 
-                        'No document provided'}
+                      ${
+                        state.document_url
+                          ? `<a href="https://qycfyruqxhypaaehyuvv.supabase.co/storage/v1/object/public/business-documents/${state.document_url}" class="link">View Document</a>`
+                          : 'No document provided'
+                      }
                     </td>
                   </tr>
                 </table>
               </div>
-            `).join('')}
+            `
+              )
+              .join('')}
           </div>
-        ` : `
+        `
+            : `
           <div class="info-row">
             <p>No states added</p>
           </div>
-        `}
+        `
+        }
         
         <!-- Metadata -->
         <h2>Metadata</h2>
@@ -275,31 +343,31 @@ export function generateBusinessRecordEmail(record: BusinessRecord): string {
       </div>
     </body>
     </html>
-  `;
+  `
 }
 
 // Function to send business record email
 export async function sendBusinessRecordEmail(
   record: BusinessRecord,
   toEmail: string,
-  fromEmail: string = "accounts@drinkeven.co"
+  fromEmail: string = 'accounts@drinkeven.co'
 ): Promise<boolean> {
   try {
-    const htmlContent = generateBusinessRecordEmail(record);
-    
+    const htmlContent = generateBusinessRecordEmail(record)
+
     const response = await client.sendEmail({
       From: fromEmail,
       To: toEmail,
       Subject: `Business Record: ${record.business_name}`,
       HtmlBody: htmlContent,
       TextBody: `Business record details for ${record.business_name}. View in an HTML email client for formatting.`,
-      MessageStream: "outbound"
-    });
-    
-    console.log("Email sent successfully:", response);
-    return true;
+      MessageStream: 'outbound',
+    })
+
+    console.log('Email sent successfully:', response)
+    return true
   } catch (error) {
-    console.error("Error sending email:", error);
-    return false;
+    console.error('Error sending email:', error)
+    return false
   }
 }
