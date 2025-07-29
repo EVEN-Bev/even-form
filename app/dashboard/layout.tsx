@@ -4,6 +4,7 @@ import { DashboardHeader } from '@/components/admin/dashboard-header'
 import { getServerClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 
+export const runtime = 'edge'
 export const metadata: Metadata = {
   title: 'EVEN Admin Dashboard',
   description:
