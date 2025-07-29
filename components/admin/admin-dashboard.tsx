@@ -53,7 +53,7 @@ export function AdminDashboard({ initialData = [], initialError = null }: AdminD
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-2">Business Records</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">EVEN Business Records</h1>
           <p className="text-gray-400 mb-4">{records.length} total records</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
