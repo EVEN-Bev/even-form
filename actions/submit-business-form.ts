@@ -7,6 +7,7 @@ import { getAdminClient } from '@/lib/supabase-admin'
 import { sendBusinessRecordEmail } from '@/lib/email-utils'
 import type { BusinessFormData } from '@/types/business-types'
 import { shopifyCreateCustomer } from '@/actions/shopify-create-customer'
+import { shopifySendAccountInvite } from '@/actions/shopify-send-account-invite'
 
 // Name of the storage bucket
 const STORAGE_BUCKET = 'business-documents'
@@ -144,6 +145,8 @@ export async function submitBusinessForm(formData: BusinessFormData) {
       }
     }
 
+    await shopifySendAccountInvite(customerData.customerCreate.customer.id)
+
     let additionalShopifyCustomerAccounts = null
 
     // Create additional managers in Shopify
@@ -206,6 +209,10 @@ export async function submitBusinessForm(formData: BusinessFormData) {
           .join('\n')
         return { success: false, error: errorMessage }
       }
+
+      additionalShopifyCustomerAccounts.map(async account => {
+        await shopifySendAccountInvite(account.data.customerCreate.customer.id)
+      })
     }
 
     // 1. Insert the business record first to get the ID
@@ -400,18 +407,10 @@ export async function submitBusinessForm(formData: BusinessFormData) {
 
         switch (process.env.NODE_ENV) {
           case 'development':
-            await sendBusinessRecordEmail(
-              fullRecord,
-              'sumner.erhard@evenbev.com',
-              'sumner.erhard@evenbev.com'
-            )
+            console.log('No Email Sent: In Development mode')
             break
           case 'test':
-            await sendBusinessRecordEmail(
-              fullRecord,
-              'sumner.erhard@evenbev.com',
-              'sumner.erhard@evenbev.com'
-            )
+            console.log('No Email Sent: In Development mode')
             break
           case 'production':
             await sendBusinessRecordEmail(fullRecord, 'laura.bethea@evenbev.com')
