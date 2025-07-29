@@ -1,6 +1,8 @@
 import { createAuthClient } from '@/lib/auth'
 import { type NextRequest, NextResponse } from 'next/server'
 
+export const runtime = 'edge'
+
 // This route handles the callback from Supabase Auth
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
