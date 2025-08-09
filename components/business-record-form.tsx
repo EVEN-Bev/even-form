@@ -227,12 +227,12 @@ const formSchema = z.object({
   whySellEven: z
     .string()
     .min(10, { message: 'Please provide a reason for selling EVEN' })
-    .optional(),
+    .optional()
+    .or(z.literal('')),
 
   // Step 4: Tax and Legal Information
 
-  // TODO: not validating EIN right now
-  // ein: z.string().min(9, { message: 'Please enter a valid EIN' }),
+  ein: z.string().min(9, { message: 'Please enter a valid EIN' }).optional().or(z.literal('')),
 
   // Step 5: Account Information
   mainContactFirstName: z.string().min(2, { message: 'First name is required' }),
@@ -253,6 +253,7 @@ export default function BusinessRecordForm() {
   const [submissionError, setSubmissionError] = useState<string | null>(null)
   const [submissionSuccess, setSubmissionSuccess] = useState(false)
   const [submissionId, setSubmissionId] = useState<string>('')
+  const [skipStep, setSkipStep] = useState(false)
   const [additionalUsers, setAdditionalUsers] = useState<
     Array<{
       firstName: string
@@ -308,8 +309,8 @@ export default function BusinessRecordForm() {
   const watchSubcategory = form.watch('subcategory')
   const formState = form.formState
 
-  const isDistributor = watchBusinessCategory === 'wholesale-distributor'
-  const isWholesale = watchBusinessCategory === 'direct-retail'
+  const isWholesaleDistributor = watchBusinessCategory === 'wholesale-distributor'
+  const isDirectRetail = watchBusinessCategory === 'direct-retail'
   const isOtherSubcategory = watchSubcategory === 'other'
 
   // Reset subcategory when business category changes
@@ -401,6 +402,7 @@ export default function BusinessRecordForm() {
 
     // Check specific fields for each step
     if (step === 1) {
+      setSkipStep(() => false)
       const businessName = form.getValues('businessName')
       const businessStreetAddress = form.getValues('businessStreetAddress')
       const businessPhone = form.getValues('businessPhone')
@@ -408,6 +410,7 @@ export default function BusinessRecordForm() {
       isValid =
         businessName.length >= 2 && businessStreetAddress.length >= 5 && businessPhone.length >= 10
     } else if (step === 2) {
+      setSkipStep(() => false)
       const businessCategory = form.getValues('businessCategory')
       const subcategory = form.getValues('subcategory')
       const otherSubcategory = form.getValues('otherSubcategory')
@@ -421,7 +424,8 @@ export default function BusinessRecordForm() {
         isValid = isValid && otherValid
       }
     } else if (step === 3) {
-      if (isDistributor) {
+      setSkipStep(() => false)
+      if (isWholesaleDistributor) {
         const locationCount = form.getValues('locationCount') || ''
         const outletTypes = form.getValues('outletTypes') || []
 
@@ -429,24 +433,22 @@ export default function BusinessRecordForm() {
           locationCount.length > 0 &&
           Number.parseInt(locationCount || '0') > 0 &&
           outletTypes.length > 0
-      } else if (isWholesale) {
+      } else if (isDirectRetail) {
         const locationCount = form.getValues('locationCount') || ''
-        const whySellEven = form.getValues('whySellEven') || ''
-
-        isValid =
-          locationCount.length > 0 &&
-          Number.parseInt(locationCount || '0') > 0 &&
-          whySellEven.length >= 10
+        isValid = locationCount.length > 0 && Number.parseInt(locationCount || '0') > 0
       }
     } else if (step === 4) {
-      // TODO: testing not having the EIN and List of state that they do business in validate
+      const ein = form.getValues('ein') as string
 
-      // const ein = form.getValues('ein')
-      // const statesValid = validateStates(false)
+      if (ein && ein.length >= 1) {
+        setSkipStep(() => false)
+      } else {
+        setSkipStep(() => true)
+      }
 
-      // isValid = ein.length >= 9 && statesValid
-      isValid = true
+      isValid = (9 === ein.length || 0 === ein.length) && validateStates(false)
     } else if (step === 5) {
+      setSkipStep(() => false)
       // Validate account contact information
       const mainFirstName = form.getValues('mainContactFirstName')
       const mainLastName = form.getValues('mainContactLastName')
@@ -463,13 +465,20 @@ export default function BusinessRecordForm() {
       // Validate additional contacts if any
       const invalidUsers = additionalUsers.filter(
         user =>
-          !user.firstName || !user.lastName || !user.email || !user.phone || user.phone.length < 10
+          !user.firstName ||
+          !user.lastName ||
+          !user.email ||
+          !user.phone ||
+          user.phone.length < 10 ||
+          mainEmail.localeCompare(user.email) === 0 ||
+          mainPhone.localeCompare(user.phone) === 0
       )
 
       if (invalidUsers.length > 0) {
         isValid = false
       }
     } else if (step === 6) {
+      setSkipStep(() => false)
       // Summary page is always valid
       isValid = true
     }
@@ -540,7 +549,6 @@ export default function BusinessRecordForm() {
         businessPhone: values.businessPhone,
         businessEmail: values.mainContactEmail,
         businessWebsite: values.websiteUrl || '',
-        // TODO: fix the EIN number
         businessEIN: values.ein,
 
         // Account manager information
@@ -616,9 +624,9 @@ export default function BusinessRecordForm() {
     let errorMessage
 
     if (selectedStates.length === 0) {
-      validationResult = false
-      errorMessage = 'Please add at least one state'
+      validationResult = true
     } else {
+      setSkipStep(() => false)
       // Check if all states have reseller numbers and documentation
       const invalidStates = selectedStates.filter(
         state => !state.resellerNumber || !state.documentFile || state.fileError
@@ -659,9 +667,9 @@ export default function BusinessRecordForm() {
         'accountRep',
         ...(isOtherSubcategory ? ['otherSubcategory'] : []),
       ],
-      3: isDistributor
+      3: isWholesaleDistributor
         ? ['locationCount', 'outletTypes']
-        : isWholesale
+        : isDirectRetail
           ? ['locationCount', 'whySellEven']
           : [],
       4: ['ein'],
@@ -672,14 +680,12 @@ export default function BusinessRecordForm() {
     const isValid = await form.trigger(fieldsToValidate)
 
     // Additional validation for states in step 4
-
     //TODO: removed state validation
-
-    // if (step === 4 && isValid) {
-    //   if (!validateStates(true)) {
-    //     return
-    //   }
-    // }
+    if (step === 4 && isValid) {
+      if (!validateStates(true)) {
+        return
+      }
+    }
 
     if (isValid) {
       if (step === 6) {
@@ -1013,7 +1019,7 @@ export default function BusinessRecordForm() {
                         render={({ field }) => (
                           <FormItem>
                             <RequiredFormLabel>
-                              {isWholesale
+                              {isDirectRetail
                                 ? 'Direct / Retail Type'
                                 : 'Wholesale / Distributor Type'}
                             </RequiredFormLabel>
@@ -1028,12 +1034,12 @@ export default function BusinessRecordForm() {
                               <FormControl>
                                 <SelectTrigger className="rounded-none">
                                   <SelectValue
-                                    placeholder={`Select ${isWholesale ? 'direct / retail' : 'wholesale / distributor'} type`}
+                                    placeholder={`Select ${isDirectRetail ? 'direct / retail' : 'wholesale / distributor'} type`}
                                   />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {(isWholesale
+                                {(isDirectRetail
                                   ? wholesaleSubcategories
                                   : distributorSubcategories
                                 ).map(subcat => (
@@ -1058,7 +1064,7 @@ export default function BusinessRecordForm() {
                             <RequiredFormLabel>Please specify</RequiredFormLabel>
                             <FormControl>
                               <Input
-                                placeholder={`Enter ${isWholesale ? 'direct / retail' : 'wholesale / distributor'} type`}
+                                placeholder={`Enter ${isDirectRetail ? 'direct / retail' : 'wholesale / distributor'} type`}
                                 className="rounded-none"
                                 {...field}
                                 onChange={e => {
@@ -1078,35 +1084,35 @@ export default function BusinessRecordForm() {
 
                 {step === 3 && (
                   <div className="space-y-4">
-                    {(isDistributor || isWholesale) && (
-                      <FormField
-                        control={form.control}
-                        name="locationCount"
-                        render={({ field }) => (
-                          <FormItem>
-                            <RequiredFormLabel>
-                              How many locations will you sell EVEN to?
-                            </RequiredFormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="1"
-                                className="rounded-none"
-                                {...field}
-                                onChange={e => {
-                                  field.onChange(e)
-                                  // Force validation after input
-                                  setTimeout(() => validateCurrentStep(), 100)
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage className="text-[#9D783C]" />
-                          </FormItem>
-                        )}
-                      />
-                    )}
+                    <FormField
+                      control={form.control}
+                      name="locationCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <RequiredFormLabel>
+                            {isWholesaleDistributor
+                              ? 'How many points of distribution do you serve?'
+                              : 'How many locations will you sell EVEN?'}
+                          </RequiredFormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="1"
+                              className="rounded-none"
+                              {...field}
+                              onChange={e => {
+                                field.onChange(e)
+                                // Force validation after input
+                                setTimeout(() => validateCurrentStep(), 100)
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-[#9D783C]" />
+                        </FormItem>
+                      )}
+                    />
 
-                    {isDistributor && (
+                    {isWholesaleDistributor && (
                       <div className="space-y-4">
                         <FormField
                           control={form.control}
@@ -1179,13 +1185,13 @@ export default function BusinessRecordForm() {
                       </div>
                     )}
 
-                    {isWholesale && (
+                    {isDirectRetail && (
                       <FormField
                         control={form.control}
                         name="whySellEven"
                         render={({ field }) => (
                           <FormItem>
-                            <RequiredFormLabel>Why do you want to sell EVEN?</RequiredFormLabel>
+                            <FormLabel>Why do you want to sell EVEN?</FormLabel>
                             <FormControl>
                               <Textarea
                                 placeholder="Tell us why you're interested in selling EVEN"
@@ -1451,6 +1457,9 @@ export default function BusinessRecordForm() {
                                   <label className="text-sm font-medium leading-none mb-2 block">
                                     Email
                                   </label>
+                                  <p className="text-gray-400 text-xs">
+                                    Email must be different than the Main Account Manager
+                                  </p>
                                   <Input
                                     type="email"
                                     placeholder="email@example.com"
@@ -1472,6 +1481,9 @@ export default function BusinessRecordForm() {
                                   <label className="text-sm font-medium leading-none mb-2 block">
                                     Phone
                                   </label>
+                                  <p className="text-gray-400 text-xs">
+                                    Phone number must be different than the Main Account Manager
+                                  </p>
                                   <Input
                                     placeholder="(555) 555-5555"
                                     className="rounded-none"
@@ -1551,7 +1563,7 @@ export default function BusinessRecordForm() {
                           </div>
                           <div className="grid grid-cols-3 gap-4">
                             <dt className="text-muted-foreground">
-                              {isWholesale
+                              {isDirectRetail
                                 ? 'Direct / Retail Type:'
                                 : 'Wholesale / Distributor Type:'}
                             </dt>
@@ -1560,7 +1572,9 @@ export default function BusinessRecordForm() {
                                 ? form.getValues('otherSubcategory')
                                 : getLabelForValue(
                                     form.getValues('subcategory'),
-                                    isWholesale ? wholesaleSubcategories : distributorSubcategories
+                                    isDirectRetail
+                                      ? wholesaleSubcategories
+                                      : distributorSubcategories
                                   )}
                             </dd>
                           </div>
@@ -1582,7 +1596,7 @@ export default function BusinessRecordForm() {
                               {formatSummaryValue(form.getValues('locationCount'))}
                             </dd>
                           </div>
-                          {isDistributor && (
+                          {isWholesaleDistributor && (
                             <div className="grid grid-cols-3 gap-4">
                               <dt className="text-muted-foreground">Outlet Types:</dt>
                               <dd className="col-span-2">
@@ -1592,7 +1606,7 @@ export default function BusinessRecordForm() {
                               </dd>
                             </div>
                           )}
-                          {isWholesale && (
+                          {isDirectRetail && (
                             <div className="grid grid-cols-3 gap-4">
                               <dt className="text-muted-foreground">Why Sell EVEN:</dt>
                               <dd className="col-span-2">
@@ -1706,29 +1720,6 @@ export default function BusinessRecordForm() {
                         <p className="text-sm text-red-500">{submissionError}</p>
                       </div>
                     )}
-
-                    <div className="mt-8 flex justify-center">
-                      <Button
-                        type="button"
-                        onClick={e => {
-                          e.preventDefault()
-                          onSubmit(form.getValues())
-                        }}
-                        className="rounded-none py-6 px-8 text-lg bg-[#9D783C] hover:bg-[#8A6A35] text-white w-full max-w-md"
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <span className="mr-2">Submitting...</span>
-                            <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          </>
-                        ) : (
-                          <>
-                            Submit Application <Check className="ml-2 h-5 w-5" />
-                          </>
-                        )}
-                      </Button>
-                    </div>
                   </div>
                 )}
               </form>
@@ -1736,7 +1727,7 @@ export default function BusinessRecordForm() {
           )}
         </CardContent>
 
-        {step < 6 && (
+        {step <= 6 && (
           <CardFooter className="flex justify-between border-t border-border pt-6">
             {step > 1 ? (
               <Button
@@ -1759,7 +1750,7 @@ export default function BusinessRecordForm() {
                 className="rounded-none bg-[#9D783C] hover:bg-[#8A6A35] text-white"
                 disabled={!isStepValid || isSubmitting}
               >
-                Next <ChevronRight className="ml-2 h-4 w-4" />
+                {skipStep ? 'Skip' : 'Next'} <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
               <Button
